@@ -17,12 +17,12 @@ A feature-rich Telegram bot for managing tasks with expiration dates, tags, and 
 
 ### Option 1: Docker (Recommended) 🐳
 ```bash
-curl -fsSL https://raw.githubusercontent.com/datayouone02/Bot-test/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/datayouone02/Bot-test/master/install.sh | bash
 ```
 
 ### Option 2: Simple (No Docker) 🐍
 ```bash
-curl -fsSL https://raw.githubusercontent.com/datayouone02/Bot-test/main/install_simple.sh | bash
+curl -fsSL https://raw.githubusercontent.com/datayouone02/Bot-test/master/install_simple.sh | bash
 ```
 
 ## Manual Installation

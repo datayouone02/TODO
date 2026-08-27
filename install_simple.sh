@@ -44,7 +44,7 @@ print_success "System dependencies installed"
 print_header "Step 2: Cloning Repository"
 if [ -d "$PROJECT_DIR" ]; then
     print_warning "Directory exists, pulling latest..."
-    cd "$PROJECT_DIR" && git pull origin main
+    cd "$PROJECT_DIR" && git pull origin master
 else
     git clone "$REPO_URL" "$PROJECT_DIR"
     cd "$PROJECT_DIR"

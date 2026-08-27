@@ -109,7 +109,7 @@ print_header "Step 5: Cloning Repository"
 if [ -d "$PROJECT_DIR" ]; then
     print_warning "Directory $PROJECT_DIR already exists. Pulling latest changes..."
     cd "$PROJECT_DIR"
-    git pull origin main
+    git pull origin master
 else
     print_info "Cloning repository from $REPO_URL..."
     git clone "$REPO_URL" "$PROJECT_DIR"
