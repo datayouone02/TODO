@@ -1,9 +1,11 @@
 import telebot
+import os
+import shutil
 from settings import TOKEN, DATABASE, ADMIN_CHAT_ID
-from database import user_data
+from database import user_data, get_db_connection
 from add_task import add_task, handle_tag_selection, ask_for_additional_info, additional_info_response, expiry_selection
-from services import (show_tasks_for_today, show_tasks_by_day, search_tasks, done_task, edit_task, 
-                     edit_choice, show_missed_tasks, show_tasks_for_tomorrow, show_stats, 
+from services import (show_tasks_for_today, show_tasks_by_day, search_tasks, done_task, edit_task,
+                     edit_choice, show_missed_tasks, show_tasks_for_tomorrow, show_stats,
                      delete_task, confirm_delete_task, cancel_delete_task, show_all_tasks)
 
 bot = telebot.TeleBot(TOKEN)
@@ -16,7 +18,59 @@ def send_database(message):
         with open(db_path, 'rb') as db_file:
             bot.send_document(chat_id, db_file)
     else:
-        bot.send_message(chat_id, "Sorry, you are not authorized to use this bot.")
+        bot.send_message(chat_id, "🚫 Sorry, you are not authorized to use this bot.")
+
+@bot.message_handler(commands=['use_this_db'])
+def use_this_database(message):
+    chat_id = message.chat.id
+    if chat_id != ADMIN_CHAT_ID:
+        bot.send_message(chat_id, "🚫 Sorry, you are not authorized to use this bot.")
+        return
+
+    # Check if this is a reply to a message with a document
+    if not message.reply_to_message:
+        bot.send_message(chat_id, "⚠️ Please reply to a database file (document) with /use_this_db command.")
+        return
+
+    replied_message = message.reply_to_message
+    if not replied_message.document:
+        bot.send_message(chat_id, "⚠️ The replied message must contain a document (database file).")
+        return
+
+    # Check file extension
+    file_name = replied_message.document.file_name
+    if not file_name.endswith('.db') and not file_name.endswith('.sqlite') and not file_name.endswith('.sqlite3'):
+        bot.send_message(chat_id, "⚠️ The file must be a SQLite database (.db, .sqlite, or .sqlite3).")
+        return
+
+    try:
+        # Download the file
+        file_info = bot.get_file(replied_message.document.file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+
+        # Create backup of current database
+        backup_path = f"{DATABASE}.backup.{int(__import__('time').time())}"
+        if os.path.exists(DATABASE):
+            shutil.copy2(DATABASE, backup_path)
+
+        # Save new database
+        with open(DATABASE, 'wb') as new_db:
+            new_db.write(downloaded_file)
+
+        # Verify the database is valid by trying to connect and query
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM tasks")
+            task_count = cursor.fetchone()[0]
+
+        bot.send_message(chat_id, f"✅ Database successfully replaced!\n📊 Tasks in new database: {task_count}\n💾 Backup saved as: {backup_path}")
+
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Error replacing database: {str(e)}")
+        # Restore backup if exists
+        if 'backup_path' in locals() and os.path.exists(backup_path):
+            shutil.copy2(backup_path, DATABASE)
+            bot.send_message(chat_id, "🔄 Restored previous database from backup.")
 
 @bot.message_handler(commands=['get_id'])
 def send_chat_id(message):
@@ -54,6 +108,7 @@ def help_command(message):
         "📊 `/stats` - View task statistics\n"
         "🆔 `/get_id` - Get your chat ID\n"
         "💾 `/get_db` - Download database (admin only)\n"
+        "🔄 `/use_this_db` - Replace database (reply to a .db file, admin only)\n"
         "❓ `/help` - Show this help message\n\n"
         "**Tip:** You can mark tasks as done, edit, or delete them using the buttons!"
     )

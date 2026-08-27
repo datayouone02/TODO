@@ -99,6 +99,7 @@ DATABASE=tasks.db
 | `/stats` | View statistics |
 | `/get_id` | Get your chat ID |
 | `/get_db` | Download database (admin only) |
+| `/use_this_db` | Replace database - reply to a .db file (admin only) |
 
 ## Project Structure
 
@@ -167,6 +168,23 @@ CREATE TABLE tasks (
     expiration_date DATE
 );
 ```
+
+## Database Replacement Feature
+
+You can replace the bot's database at runtime without restarting:
+
+1. Send a `.db` / `.sqlite` / `.sqlite3` file to the bot
+2. Reply to that file with `/use_this_db`
+3. The bot will:
+   - Backup the current database
+   - Replace it with the new one
+   - Verify the new database structure
+   - Report the number of tasks loaded
+
+This is useful for:
+- Migrating data between servers
+- Restoring from backups
+- Switching between different task databases
 
 ## Pre-defined Tags
 
