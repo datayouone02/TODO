@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  todo-bot:
+    build: .
+    container_name: todo-telegram-bot
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./tasks.db:/app/tasks.db
+    env_file:
+      - .env
+    environment:
+      - TZ=UTC
