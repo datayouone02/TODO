@@ -17,6 +17,12 @@ print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
+# Use /dev/tty for interactive input when piped
+exec 3<&0  # Save original stdin
+if [[ ! -t 0 ]]; then
+    exec 0</dev/tty  # Redirect stdin to terminal
+fi
+
 REPO_URL="https://github.com/datayouone02/TODO.git"
 REPO_BRANCH="main"
 SERVICE_NAME="todo-bot"
@@ -77,7 +83,7 @@ validate_token() {
 # Get bot token
 while true; do
     echo
-    read -p "Enter your Bot Token (from @BotFather): " BOT_TOKEN
+    read -p "Enter your Bot Token (from @BotFather): " BOT_TOKEN <&3
     BOT_TOKEN=$(echo "$BOT_TOKEN" | tr -d '[:space:]')
 
     if [[ -z "$BOT_TOKEN" ]]; then
@@ -94,7 +100,7 @@ done
 # Get admin chat ID
 while true; do
     echo
-    read -p "Enter your Admin Chat ID (from @userinfobot): " ADMIN_CHAT_ID
+    read -p "Enter your Admin Chat ID (from @userinfobot): " ADMIN_CHAT_ID <&3
     ADMIN_CHAT_ID=$(echo "$ADMIN_CHAT_ID" | tr -d '[:space:]')
 
     if [[ -z "$ADMIN_CHAT_ID" ]]; then
@@ -121,6 +127,8 @@ while true; do
         print_error "Failed to send test message. Check Chat ID. Response: $test_response"
     fi
 done
+
+exec 0<&3  # Restore stdin
 
 # Create .env with provided credentials
 print_info "Saving credentials to .env..."
