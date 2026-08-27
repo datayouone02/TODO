@@ -1,7 +1,5 @@
-# Environment files
+# Environment variables
 .env
-.env.local
-.env.*.local
 
 # Database
 *.db
@@ -12,12 +10,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
-venv/
-env/
-.venv/
+.pytest_cache/
+.coverage
 *.egg-info/
-dist/
-build/
 
 # IDE
 .vscode/
@@ -31,9 +26,6 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Docker
-.docker/
 
 # Backup files
 *.backup.*

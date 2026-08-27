@@ -1,87 +1,146 @@
 # TODO Telegram Bot
 
-A feature-rich Telegram bot for managing tasks with expiration dates, tags, and statistics.
+A powerful Telegram bot for managing tasks with expiration dates, tags, and search capabilities.
 
 ## Features
 
 - ✅ Add tasks with product links, buyer names, tags, and expiration dates
 - 📅 View tasks for today, tomorrow, or any specific date
-- 🔍 Search tasks by any field
-- 📊 Statistics dashboard (total, today, tomorrow, missed, upcoming)
-- ✏️ Edit tasks (product link, buyer name, expiration date)
+- 🔍 Search tasks by keywords
+- ⏰ Track missed/overdue tasks
+- 📊 View task statistics
+- ✏️ Edit task details (product link, buyer name, expiration date)
 - 🗑️ Delete tasks with confirmation
-- ✅ Mark tasks as done
-- 🏷️ Pre-defined tag categories for subscriptions/services
+- 💾 Backup and restore database
+- 🔐 Admin-only access control
 
-## Quick Install on Ubuntu (One Command)
+## Requirements
 
-### Option 1: Docker (Recommended) 🐳
+- Python 3.8+
+- Ubuntu/Debian (for install script)
+- Telegram Bot Token
+- Admin Chat ID
+
+## Quick Install on Ubuntu
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/datayouone02/Bot-test/master/install.sh | bash
+# Clone the repository
+git clone https://github.com/datayouone02/TODO.git
+cd TODO
+
+# Make install script executable and run it
+chmod +x install.sh
+sudo ./install.sh
 ```
 
-### Option 2: Simple (No Docker) 🐍
-```bash
-curl -fsSL https://raw.githubusercontent.com/datayouone02/Bot-test/master/install_simple.sh | bash
-```
+The install script will:
+1. Install Python 3 and pip if not present
+2. Create a virtual environment
+3. Install dependencies
+4. Set up the bot as a systemd service
+5. Configure auto-start on boot
 
 ## Manual Installation
 
-### Using Docker (Recommended)
+### 1. Clone the Repository
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/datayouone02/Bot-test.git
-cd Bot-test
-
-# 2. Configure environment
-cp .env.example .env
-nano .env  # Add your TOKEN and ADMIN_CHAT_ID
-
-# 3. Start with Docker Compose
-docker compose up -d
-
-# 4. View logs
-docker compose logs -f
+git clone https://github.com/datayouone02/TODO.git
+cd TODO
 ```
 
-### Without Docker
+### 2. Create Virtual Environment
 
 ```bash
-# 1. Clone and enter directory
-git clone https://github.com/datayouone02/Bot-test.git
-cd Bot-test
-
-# 2. Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Configure environment
-cp .env.example .env
-nano .env  # Add your TOKEN and ADMIN_CHAT_ID
-
-# 5. Run the bot
-python TO-DO.py
 ```
 
-## Configuration
+### 3. Install Dependencies
 
-Create a `.env` file with:
+```bash
+pip install -r requirements.txt
+```
 
+### 4. Configure Environment Variables
+
+Create a `.env` file:
+
+```bash
+cp .env.example .env
+# Edit .env with your values
+nano .env
+```
+
+Required variables:
 ```env
-TOKEN=your_bot_token_from_botfather
-ADMIN_CHAT_ID=your_telegram_chat_id
+TOKEN=your_telegram_bot_token
+ADMIN_CHAT_ID=your_admin_chat_id
 DATABASE=tasks.db
 ```
 
-### Getting Your Chat ID
+### 5. Run the Bot
 
-1. Start a chat with your bot on Telegram
-2. Send `/get_id` command
-3. Copy the returned chat ID to `.env`
+```bash
+python TO-DO.py
+```
+
+## Getting Telegram Credentials
+
+### Bot Token
+1. Message [@BotFather](https://t.me/BotFather) on Telegram
+2. Send `/newbot` and follow instructions
+3. Copy the token provided
+
+### Admin Chat ID
+1. Message [@userinfobot](https://t.me/userinfobot) on Telegram
+2. Copy your Chat ID (numeric)
+
+## Systemd Service (Auto-start on Boot)
+
+The install script sets up a systemd service. Manual setup:
+
+```bash
+# Create service file
+sudo tee /etc/systemd/system/todo-bot.service > /dev/null <<EOF
+[Unit]
+Description=TODO Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=/home/$USER/TODO
+Environment=PATH=/home/$USER/TODO/venv/bin
+ExecStart=/home/$USER/TODO/venv/bin/python TO-DO.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable todo-bot
+sudo systemctl start todo-bot
+```
+
+### Service Management
+
+```bash
+# Check status
+sudo systemctl status todo-bot
+
+# View logs
+sudo journalctl -u todo-bot -f
+
+# Restart
+sudo systemctl restart todo-bot
+
+# Stop
+sudo systemctl stop todo-bot
+```
 
 ## Bot Commands
 
@@ -98,103 +157,67 @@ DATABASE=tasks.db
 | `/search` | Search tasks |
 | `/stats` | View statistics |
 | `/get_id` | Get your chat ID |
-| `/get_db` | Download database (admin only) |
-| `/use_this_db` | Replace database - reply to a .db file (admin only) |
+| `/get_db` | Download database (admin) |
+| `/use_this_db` | Replace database (admin) |
+
+## Adding Tasks
+
+1. Send `/add`
+2. Enter product link
+3. Enter buyer's name
+4. Select tags (multiple pages available)
+5. Choose to add additional info
+6. Select expiration date (presets or manual entry)
+
+## Database Management
+
+The bot uses SQLite (`tasks.db`). You can:
+- Download backup: `/get_db` (admin only)
+- Restore from backup: Reply to a `.db` file with `/use_this_db` (admin only)
 
 ## Project Structure
 
 ```
-.
+TODO/
 ├── TO-DO.py           # Main bot entry point
-├── add_task.py        # Task creation flow
-├── services.py        # Task display and management
 ├── database.py        # Database operations
-├── settings.py        # Configuration
+├── settings.py        # Configuration & utilities
+├── services.py        # Task display & management logic
+├── add_task.py        # Task creation flow
 ├── migrate_admin.py   # Admin migration utility
 ├── requirements.txt   # Python dependencies
-├── Dockerfile         # Docker image definition
-├── docker-compose.yml # Docker Compose configuration
-├── install.sh         # Docker-based installer
-├── install_simple.sh  # Non-Docker installer
 ├── .env.example       # Environment template
+├── install.sh         # Ubuntu install script
 └── README.md          # This file
 ```
 
-## Systemd Service (Production)
+## Troubleshooting
 
-The simple installer creates a systemd service for auto-start:
-
+### Bot not responding
 ```bash
-# Check status
+# Check service status
 sudo systemctl status todo-bot
 
-# View logs
-sudo journalctl -u todo-bot -f
-
-# Restart
-sudo systemctl restart todo-bot
+# Check logs
+sudo journalctl -u todo-bot -n 50
 ```
 
-## Docker Commands
-
+### Database errors
 ```bash
-# Start
-docker compose up -d
+# Check database file exists
+ls -la tasks.db
 
-# Stop
-docker compose down
-
-# Restart
-docker compose restart
-
-# View logs
-docker compose logs -f
-
-# Rebuild and start
-docker compose up -d --build
+# Check permissions
+chmod 644 tasks.db
 ```
 
-## Database
-
-The bot uses SQLite (`tasks.db`) with the following schema:
-
-```sql
-CREATE TABLE tasks (
-    chat_id INTEGER,
-    product_link TEXT,
-    buyer_name TEXT,
-    tags TEXT,
-    additional_info TEXT,
-    expiration_date DATE
-);
-```
-
-## Database Replacement Feature
-
-You can replace the bot's database at runtime without restarting:
-
-1. Send a `.db` / `.sqlite` / `.sqlite3` file to the bot
-2. Reply to that file with `/use_this_db`
-3. The bot will:
-   - Backup the current database
-   - Replace it with the new one
-   - Verify the new database structure
-   - Report the number of tasks loaded
-
-This is useful for:
-- Migrating data between servers
-- Restoring from backups
-- Switching between different task databases
-
-## Pre-defined Tags
-
-The bot includes tags for popular services:
-- Streaming: Netflix, Prime Video, Osn+, Shahid VIP, Spotify, Crunchyroll
-- Duration: 1 month, 2 months, 3 months, 6 months, 1 year, 2 years
-- Screens: 1-5 screens
-- Payment: Flexy, BaridiMob, CCP
-- Other: Extra, Cookies, Crack, Officiel, VPN, Isra, Asma, Page, Asma Bl, Eleven, King
+### Port conflicts
+The bot uses long polling (no webhook), so no ports needed.
 
 ## License
 
-MIT License
+MIT License - feel free to use and modify.
+
+## Support
+
+For issues, create a GitHub issue or contact the admin.

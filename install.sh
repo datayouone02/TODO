@@ -1,16 +1,9 @@
 #!/bin/bash
 
-# =============================================================================
-# TODO Telegram Bot - Automatic Installation Script for Ubuntu
-# =============================================================================
-# This script will:
-# 1. Install Docker and Docker Compose (if not installed)
-# 2. Clone the repository
-# 3. Set up environment variables
-# 4. Start the bot using Docker Compose
-# =============================================================================
+# TODO Telegram Bot - Ubuntu Installation Script
+# Run with: sudo ./install.sh
 
-set -e  # Exit on any error
+set -e  # Exit on error
 
 # Colors for output
 RED='\033[0;31m'
@@ -20,173 +13,149 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-REPO_URL="https://github.com/datayouone02/Bot-test.git"
-PROJECT_DIR="$HOME/todo-bot"
-BOT_TOKEN="7599055445:AAF32gHj_4FDrNy1VZFnesB2--9k3rMqiuU"
+REPO_URL="https://github.com/datayouone02/TODO.git"
+PROJECT_DIR="$HOME/TODO"
+SERVICE_NAME="todo-bot"
+PYTHON_VERSION="3.8"
 
-# Functions
-print_header() {
-    echo -e "${BLUE}==============================================================================${NC}"
-    echo -e "${BLUE}$1${NC}"
-    echo -e "${BLUE}==============================================================================${NC}"
+# Helper functions
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
 }
 
 print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
-
-print_error() {
-    echo -e "${RED}✗ $1${NC}"
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-print_info() {
-    echo -e "${BLUE}ℹ $1${NC}"
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
 }
 
-check_command() {
-    if command -v "$1" &> /dev/null; then
-        return 0
-    else
-        return 1
+check_root() {
+    if [[ $EUID -ne 0 ]]; then
+        print_error "This script must be run as root (use sudo)"
+        exit 1
     fi
 }
 
+get_actual_user() {
+    if [[ -n "$SUDO_USER" ]]; then
+        echo "$SUDO_USER"
+    else
+        echo "$USER"
+    fi
+}
+
+ACTUAL_USER=$(get_actual_user)
+ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
+PROJECT_DIR="$ACTUAL_HOME/TODO"
+
+print_info "Starting TODO Bot installation for user: $ACTUAL_USER"
+print_info "Project directory: $PROJECT_DIR"
+
 # Check if running as root
-if [[ $EUID -eq 0 ]]; then
-    print_warning "Running as root. This is not recommended for Docker."
-    print_warning "Consider running as a regular user with sudo privileges."
-fi
+check_root
 
-print_header "TODO Telegram Bot - Installation Script"
+# Update package list
+print_info "Updating package list..."
+apt-get update -qq
 
-# Step 1: Update system packages
-print_header "Step 1: Updating System Packages"
-sudo apt-get update -y
-print_success "System packages updated"
+# Install Python and dependencies
+print_info "Installing Python $PYTHON_VERSION and required packages..."
+apt-get install -y -qq python3 python3-venv python3-pip git
 
-# Step 2: Install Docker if not present
-print_header "Step 2: Installing Docker"
-if check_command docker; then
-    print_success "Docker is already installed: $(docker --version)"
-else
-    print_info "Installing Docker..."
-    sudo apt-get install -y ca-certificates curl gnupg lsb-release
-    sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update -y
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    print_success "Docker installed successfully"
-fi
+# Check Python version
+PYTHON_INSTALLED_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
+print_info "Python version installed: $PYTHON_INSTALLED_VERSION"
 
-# Step 3: Install Docker Compose if not present
-print_header "Step 3: Checking Docker Compose"
-if check_command docker-compose || docker compose version &> /dev/null; then
-    print_success "Docker Compose is available"
-else
-    print_info "Installing Docker Compose..."
-    sudo apt-get install -y docker-compose-plugin
-    print_success "Docker Compose installed"
-fi
-
-# Step 4: Add user to docker group
-print_header "Step 4: Configuring Docker Permissions"
-if groups $USER | grep -q docker; then
-    print_success "User is already in docker group"
-else
-    print_info "Adding user to docker group..."
-    sudo usermod -aG docker $USER
-    print_warning "You need to log out and back in for group changes to take effect"
-    print_warning "Or run: newgrp docker"
-fi
-
-# Step 5: Clone repository
-print_header "Step 5: Cloning Repository"
-if [ -d "$PROJECT_DIR" ]; then
-    print_warning "Directory $PROJECT_DIR already exists. Pulling latest changes..."
+# Clone or update repository
+if [[ -d "$PROJECT_DIR/.git" ]]; then
+    print_info "Repository exists, pulling latest changes..."
     cd "$PROJECT_DIR"
-    git pull origin master
+    sudo -u "$ACTUAL_USER" git pull origin master
 else
-    print_info "Cloning repository from $REPO_URL..."
-    git clone "$REPO_URL" "$PROJECT_DIR"
-    cd "$PROJECT_DIR"
-fi
-print_success "Repository ready at $PROJECT_DIR"
-
-# Step 6: Create .env file
-print_header "Step 6: Configuring Environment Variables"
-ENV_FILE="$PROJECT_DIR/.env"
-if [ -f "$ENV_FILE" ]; then
-    print_warning ".env file already exists. Backing up and creating new one..."
-    cp "$ENV_FILE" "$ENV_FILE.backup.$(date +%s)"
+    print_info "Cloning repository..."
+    sudo -u "$ACTUAL_USER" git clone "$REPO_URL" "$PROJECT_DIR"
 fi
 
-print_info "Creating .env file with your bot token..."
-cat > "$ENV_FILE" << EOF
-# Telegram Bot Configuration
-# Auto-generated by install.sh on $(date)
-
-# Your bot token from @BotFather
-TOKEN=$BOT_TOKEN
-
-# Your Telegram chat ID (get it by sending /get_id to the bot)
-# Replace this with your actual chat ID
-ADMIN_CHAT_ID=YOUR_CHAT_ID_HERE
-
-# Database file path
-DATABASE=tasks.db
-EOF
-
-print_success ".env file created at $ENV_FILE"
-print_warning "IMPORTANT: You need to edit $ENV_FILE and replace YOUR_CHAT_ID_HERE with your actual Telegram chat ID"
-print_info "To get your chat ID: message the bot and send /get_id command"
-
-# Step 7: Create data directory
-print_header "Step 7: Setting Up Data Directory"
-mkdir -p "$PROJECT_DIR/data"
-print_success "Data directory created"
-
-# Step 8: Build and start the bot
-print_header "Step 8: Building and Starting the Bot"
 cd "$PROJECT_DIR"
 
-print_info "Building Docker image..."
-docker compose build
+# Create virtual environment
+print_info "Creating virtual environment..."
+sudo -u "$ACTUAL_USER" python3 -m venv venv
 
-print_info "Starting the bot..."
-docker compose up -d
+# Install Python dependencies
+print_info "Installing Python dependencies..."
+sudo -u "$ACTUAL_USER" "$PROJECT_DIR/venv/bin/pip" install --upgrade pip -q
+sudo -u "$ACTUAL_USER" "$PROJECT_DIR/venv/bin/pip" install -r requirements.txt -q
 
-print_success "Bot started successfully!"
+# Create .env file if it doesn't exist
+if [[ ! -f "$PROJECT_DIR/.env" ]]; then
+    print_warning "No .env file found. Creating from template..."
+    sudo -u "$ACTUAL_USER" cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
+    print_warning "Please edit $PROJECT_DIR/.env with your bot token and admin chat ID"
+    print_warning "Use: nano $PROJECT_DIR/.env"
+else
+    print_info ".env file already exists"
+fi
 
-# Step 9: Show status
-print_header "Step 9: Verifying Installation"
-sleep 3
-docker compose ps
-echo ""
-docker compose logs --tail=20
+# Set permissions
+print_info "Setting file permissions..."
+chown -R "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR"
+chmod +x "$PROJECT_DIR/TO-DO.py"
 
-print_header "Installation Complete!"
-echo ""
-print_info "The bot is now running in the background."
-echo ""
-print_info "Useful commands:"
-echo -e "  ${YELLOW}cd $PROJECT_DIR${NC}"
-echo -e "  ${YELLOW}docker compose logs -f${NC}     # View live logs"
-echo -e "  ${YELLOW}docker compose restart${NC}     # Restart the bot"
-echo -e "  ${YELLOW}docker compose down${NC}        # Stop the bot"
-echo -e "  ${YELLOW}docker compose up -d${NC}       # Start the bot"
-echo ""
-print_warning "IMPORTANT: Don't forget to:"
-echo -e "  1. Edit ${YELLOW}$ENV_FILE${NC} and set your ADMIN_CHAT_ID"
-echo -e "  2. Restart the bot: ${YELLOW}docker compose restart${NC}"
-echo ""
-print_info "To get your chat ID:"
-echo -e "  1. Start a chat with your bot on Telegram"
-echo -e "  2. Send /get_id command"
-echo -e "  3. Copy the chat ID and update .env file"
-echo ""
-print_success "Enjoy your TODO bot! 🎉"
+# Create systemd service
+print_info "Creating systemd service..."
+cat > "/etc/systemd/system/$SERVICE_NAME.service" <<EOF
+[Unit]
+Description=TODO Telegram Bot
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=10
+User=$ACTUAL_USER
+WorkingDirectory=$PROJECT_DIR
+Environment=PATH=$PROJECT_DIR/venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/TO-DO.py
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=$PROJECT_DIR
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd and enable service
+print_info "Configuring systemd service..."
+systemctl daemon-reload
+systemctl enable "$SERVICE_NAME"
+
+print_success "Installation complete!"
+echo
+print_info "Next steps:"
+echo "  1. Edit the .env file with your credentials:"
+echo "     nano $PROJECT_DIR/.env"
+echo
+echo "  2. Start the bot:"
+echo "     sudo systemctl start $SERVICE_NAME"
+echo
+echo "  3. Check status:"
+echo "     sudo systemctl status $SERVICE_NAME"
+echo
+echo "  4. View logs:"
+echo "     sudo journalctl -u $SERVICE_NAME -f"
+echo
+print_warning "Remember to add your TOKEN and ADMIN_CHAT_ID to .env before starting!"
