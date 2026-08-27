@@ -17,7 +17,7 @@ echo
 if [[ -d "$PROJECT_DIR/.git" ]]; then
     echo "📦 Repository exists, pulling latest changes..."
     cd "$PROJECT_DIR"
-    git pull origin master
+    git pull origin "$REPO_BRANCH"
 else
     echo "📦 Cloning repository..."
     git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR"

@@ -61,6 +61,13 @@ print_info "Project directory: $PROJECT_DIR"
 # Check if running as root
 check_root
 
+# Install sudo if not present (needed for running commands as actual user)
+if ! command -v sudo &> /dev/null; then
+    print_info "Installing sudo..."
+    apt-get update -qq
+    apt-get install -y -qq sudo
+fi
+
 # Update package list
 print_info "Updating package list..."
 apt-get update -qq
@@ -77,7 +84,7 @@ print_info "Python version installed: $PYTHON_INSTALLED_VERSION"
 if [[ -d "$PROJECT_DIR/.git" ]]; then
     print_info "Repository exists, pulling latest changes..."
     cd "$PROJECT_DIR"
-    sudo -u "$ACTUAL_USER" git pull origin master
+    sudo -u "$ACTUAL_USER" git pull origin "$REPO_BRANCH"
 else
     print_info "Cloning repository..."
     sudo -u "$ACTUAL_USER" git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR"
