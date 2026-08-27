@@ -4,8 +4,14 @@ A powerful Telegram bot for managing tasks with expiration dates, tags, and sear
 
 ## Install (Ubuntu/Debian/Docker)
 
+**Interactive (recommended):**
 ```bash
 apt-get update && apt-get install -y curl git python3 python3-venv python3-pip && curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh -o install.sh && bash install.sh
+```
+
+**Non-interactive (for automation):**
+```bash
+BOT_TOKEN="your_token" ADMIN_CHAT_ID="your_chat_id" apt-get update && apt-get install -y curl git python3 python3-venv python3-pip && curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
 ```
 
 ## How It Works
