@@ -29,6 +29,16 @@ A powerful Telegram bot for managing tasks with expiration dates, tags, and sear
 curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | sudo bash
 ```
 
+### For minimal environments (Docker, containers) without curl/sudo
+
+```bash
+# Install required tools first
+apt-get update && apt-get install -y curl git python3 python3-venv python3-pip
+
+# Then run the install script (works as root without sudo)
+curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
+```
+
 ### Manual install
 
 ```bash

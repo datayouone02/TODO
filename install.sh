@@ -2,8 +2,9 @@
 
 # TODO Telegram Bot - Ubuntu Installation Script
 # Run with: sudo ./install.sh  (or as root directly: ./install.sh)
-# One-liner: curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
+# One-liner: curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | sudo bash
 #           (or with sudo if not root: curl -fsSL ... | sudo bash)
+# Minimal/Docker (no curl/sudo): apt-get update && apt-get install -y curl && curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
 
 set -e  # Exit on error
 
