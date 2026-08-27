@@ -8,22 +8,15 @@ A powerful Telegram bot for managing tasks with expiration dates, tags, and sear
 apt-get update && apt-get install -y curl git python3 python3-venv python3-pip && curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
 ```
 
-## After Installation
+## How It Works
 
-Credentials are **auto-configured** during install. Just verify:
-
-```bash
-cat ~/TODO/.env
-```
-
-2. Start the bot:
-   ```bash
-   # If systemd available (standard Ubuntu)
-   systemctl start todo-bot
-   
-   # If no systemd (Docker/minimal)
-   cd ~/TODO && ./start_bot.sh
-   ```
+The install script will:
+1. **Install all dependencies** via apt (curl, git, python3, venv, pip)
+2. **Clone the repository** from GitHub
+3. **Create virtual environment** and install Python packages
+4. **Prompt for Bot Token** - validates it with Telegram API
+5. **Prompt for Admin Chat ID** - sends test message to verify
+6. **Start the bot** automatically (systemd or background)
 
 ## Bot Commands
 

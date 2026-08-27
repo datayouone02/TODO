@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# TODO Telegram Bot - One-line install script
+# TODO Telegram Bot - Interactive Install Script
 # Usage: apt-get update && apt-get install -y curl && curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
 # Or as root: curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
 
@@ -52,19 +52,84 @@ print_info "Setting up Python environment..."
 [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" python3 -m venv venv || python3 -m venv venv
 [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" "$PROJECT_DIR/venv/bin/pip" install -q -r requirements.txt || "$PROJECT_DIR/venv/bin/pip" install -q -r requirements.txt
 
-# Create .env with credentials
-print_info "Creating .env with your credentials..."
-cat > "$PROJECT_DIR/.env" <<EOF
-TOKEN=7534593312:AAEvjSrbcclTkqVm3aFt7aUNDzPahuSwxt0
-ADMIN_CHAT_ID=8432235716
-DATABASE=tasks.db
-EOF
-[[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR/.env"
-print_success "Credentials written to .env"
-
 # Permissions
 [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown -R "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR"
 chmod +x "$PROJECT_DIR/TO-DO.py"
+
+# Interactive configuration
+print_info "Configuring bot credentials..."
+
+# Function to validate bot token
+validate_token() {
+    local token=$1
+    response=$(curl -s "https://api.telegram.org/bot$token/getMe")
+    if echo "$response" | grep -q '"ok":true'; then
+        bot_name=$(echo "$response" | grep -o '"first_name":"[^"]*"' | cut -d'"' -f4)
+        bot_username=$(echo "$response" | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
+        print_success "Bot verified: $bot_name (@$bot_username)"
+        return 0
+    else
+        print_error "Invalid token. Response: $response"
+        return 1
+    fi
+}
+
+# Get bot token
+while true; do
+    echo
+    read -p "Enter your Bot Token (from @BotFather): " BOT_TOKEN
+    BOT_TOKEN=$(echo "$BOT_TOKEN" | tr -d '[:space:]')
+
+    if [[ -z "$BOT_TOKEN" ]]; then
+        print_error "Token cannot be empty"
+        continue
+    fi
+
+    print_info "Validating token..."
+    if validate_token "$BOT_TOKEN"; then
+        break
+    fi
+done
+
+# Get admin chat ID
+while true; do
+    echo
+    read -p "Enter your Admin Chat ID (from @userinfobot): " ADMIN_CHAT_ID
+    ADMIN_CHAT_ID=$(echo "$ADMIN_CHAT_ID" | tr -d '[:space:]')
+
+    if [[ -z "$ADMIN_CHAT_ID" ]]; then
+        print_error "Chat ID cannot be empty"
+        continue
+    fi
+
+    if ! [[ "$ADMIN_CHAT_ID" =~ ^-?[0-9]+$ ]]; then
+        print_error "Chat ID must be a number"
+        continue
+    fi
+
+    # Test sending message
+    print_info "Testing bot connection..."
+    test_response=$(curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+        -d chat_id="$ADMIN_CHAT_ID" \
+        -d text="🤖 TODO Bot started successfully!" \
+        -d parse_mode="Markdown")
+
+    if echo "$test_response" | grep -q '"ok":true'; then
+        print_success "Test message sent to Telegram!"
+        break
+    else
+        print_error "Failed to send test message. Check Chat ID. Response: $test_response"
+    fi
+done
+
+# Create .env with provided credentials
+print_info "Saving credentials to .env..."
+cat > "$PROJECT_DIR/.env" <<EOF
+TOKEN=$BOT_TOKEN
+ADMIN_CHAT_ID=$ADMIN_CHAT_ID
+DATABASE=tasks.db
+EOF
+[[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR/.env"
 
 # systemd or start script
 if command -v systemctl &> /dev/null && [[ -d /run/systemd/system ]]; then
@@ -88,7 +153,19 @@ WantedBy=multi-user.target
 EOF
     systemctl daemon-reload
     systemctl enable "$SERVICE_NAME"
-    print_success "Installed! Run: systemctl start $SERVICE_NAME"
+    print_success "Systemd service installed"
+
+    # Start the service
+    print_info "Starting bot..."
+    systemctl start "$SERVICE_NAME"
+    sleep 2
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        print_success "Bot is running!"
+        echo "  Status: systemctl status $SERVICE_NAME"
+        echo "  Logs:   journalctl -u $SERVICE_NAME -f"
+    else
+        print_error "Bot failed to start. Check logs: journalctl -u $SERVICE_NAME -n 50"
+    fi
 else
     print_warning "No systemd detected - creating start script"
     cat > "$PROJECT_DIR/start_bot.sh" <<'EOF'
@@ -99,7 +176,24 @@ python TO-DO.py
 EOF
     chmod +x "$PROJECT_DIR/start_bot.sh"
     [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR/start_bot.sh"
-    print_success "Installed! Run: cd $PROJECT_DIR && ./start_bot.sh"
+    print_success "Start script created: $PROJECT_DIR/start_bot.sh"
+
+    # Start the bot in background
+    print_info "Starting bot..."
+    cd "$PROJECT_DIR"
+    nohup ./start_bot.sh > bot.log 2>&1 &
+    BOT_PID=$!
+    sleep 3
+    if kill -0 $BOT_PID 2>/dev/null; then
+        print_success "Bot is running in background (PID: $BOT_PID)"
+        echo "  Logs: tail -f $PROJECT_DIR/bot.log"
+        echo "  Stop: pkill -f TO-DO.py"
+    else
+        print_error "Bot failed to start. Check: cat $PROJECT_DIR/bot.log"
+    fi
 fi
 
-print_warning "Edit $PROJECT_DIR/.env with TOKEN and ADMIN_CHAT_ID before starting!"
+print_success "Installation complete! 🎉"
+echo
+echo "Bot is now running and ready to use."
+echo "Send /start to your bot in Telegram."
