@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# TODO Telegram Bot - Interactive Install Script
-# Usage: apt-get update && apt-get install -y curl && curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
-# Or as root: curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
+# TODO Telegram Bot - Install Script
+# Usage:
+#   Interactive (recommended): wget -qO- https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
+#   Or download first: curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh -o install.sh && bash install.sh
+#   Non-interactive: BOT_TOKEN="xxx" ADMIN_CHAT_ID="xxx" bash install.sh
 
 set -e
 
@@ -16,12 +18,6 @@ print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-
-# Use /dev/tty for interactive input when piped
-exec 3<&0  # Save original stdin
-if [[ ! -t 0 ]]; then
-    exec 0</dev/tty  # Redirect stdin to terminal
-fi
 
 REPO_URL="https://github.com/datayouone02/TODO.git"
 REPO_BRANCH="main"
@@ -62,73 +58,81 @@ print_info "Setting up Python environment..."
 [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown -R "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR"
 chmod +x "$PROJECT_DIR/TO-DO.py"
 
-# Interactive configuration
-print_info "Configuring bot credentials..."
-
-# Function to validate bot token
-validate_token() {
-    local token=$1
-    response=$(curl -s "https://api.telegram.org/bot$token/getMe")
-    if echo "$response" | grep -q '"ok":true'; then
-        bot_name=$(echo "$response" | grep -o '"first_name":"[^"]*"' | cut -d'"' -f4)
-        bot_username=$(echo "$response" | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
-        print_success "Bot verified: $bot_name (@$bot_username)"
+# Get credentials - support both interactive and non-interactive
+get_credentials() {
+    # If provided via environment, use them
+    if [[ -n "$BOT_TOKEN" && -n "$ADMIN_CHAT_ID" ]]; then
+        print_info "Using credentials from environment variables"
         return 0
-    else
-        print_error "Invalid token. Response: $response"
-        return 1
     fi
+
+    print_info "Configuring bot credentials..."
+
+    # Function to validate bot token
+    validate_token() {
+        local token=$1
+        response=$(curl -s "https://api.telegram.org/bot$token/getMe")
+        if echo "$response" | grep -q '"ok":true'; then
+            bot_name=$(echo "$response" | grep -o '"first_name":"[^"]*"' | cut -d'"' -f4)
+            bot_username=$(echo "$response" | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
+            print_success "Bot verified: $bot_name (@$bot_username)"
+            return 0
+        else
+            print_error "Invalid token. Response: $response"
+            return 1
+        fi
+    }
+
+    # Get bot token
+    while true; do
+        echo
+        read -p "Enter your Bot Token (from @BotFather): " BOT_TOKEN
+        BOT_TOKEN=$(echo "$BOT_TOKEN" | tr -d '[:space:]')
+
+        if [[ -z "$BOT_TOKEN" ]]; then
+            print_error "Token cannot be empty"
+            continue
+        fi
+
+        print_info "Validating token..."
+        if validate_token "$BOT_TOKEN"; then
+            break
+        fi
+    done
+
+    # Get admin chat ID
+    while true; do
+        echo
+        read -p "Enter your Admin Chat ID (from @userinfobot): " ADMIN_CHAT_ID
+        ADMIN_CHAT_ID=$(echo "$ADMIN_CHAT_ID" | tr -d '[:space:]')
+
+        if [[ -z "$ADMIN_CHAT_ID" ]]; then
+            print_error "Chat ID cannot be empty"
+            continue
+        fi
+
+        if ! [[ "$ADMIN_CHAT_ID" =~ ^-?[0-9]+$ ]]; then
+            print_error "Chat ID must be a number"
+            continue
+        fi
+
+        # Test sending message
+        print_info "Testing bot connection..."
+        test_response=$(curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+            -d chat_id="$ADMIN_CHAT_ID" \
+            -d text="🤖 TODO Bot started successfully!" \
+            -d parse_mode="Markdown")
+
+        if echo "$test_response" | grep -q '"ok":true'; then
+            print_success "Test message sent to Telegram!"
+            break
+        else
+            print_error "Failed to send test message. Check Chat ID. Response: $test_response"
+        fi
+    done
 }
 
-# Get bot token
-while true; do
-    echo
-    read -p "Enter your Bot Token (from @BotFather): " BOT_TOKEN <&3
-    BOT_TOKEN=$(echo "$BOT_TOKEN" | tr -d '[:space:]')
-
-    if [[ -z "$BOT_TOKEN" ]]; then
-        print_error "Token cannot be empty"
-        continue
-    fi
-
-    print_info "Validating token..."
-    if validate_token "$BOT_TOKEN"; then
-        break
-    fi
-done
-
-# Get admin chat ID
-while true; do
-    echo
-    read -p "Enter your Admin Chat ID (from @userinfobot): " ADMIN_CHAT_ID <&3
-    ADMIN_CHAT_ID=$(echo "$ADMIN_CHAT_ID" | tr -d '[:space:]')
-
-    if [[ -z "$ADMIN_CHAT_ID" ]]; then
-        print_error "Chat ID cannot be empty"
-        continue
-    fi
-
-    if ! [[ "$ADMIN_CHAT_ID" =~ ^-?[0-9]+$ ]]; then
-        print_error "Chat ID must be a number"
-        continue
-    fi
-
-    # Test sending message
-    print_info "Testing bot connection..."
-    test_response=$(curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
-        -d chat_id="$ADMIN_CHAT_ID" \
-        -d text="🤖 TODO Bot started successfully!" \
-        -d parse_mode="Markdown")
-
-    if echo "$test_response" | grep -q '"ok":true'; then
-        print_success "Test message sent to Telegram!"
-        break
-    else
-        print_error "Failed to send test message. Check Chat ID. Response: $test_response"
-    fi
-done
-
-exec 0<&3  # Restore stdin
+get_credentials
 
 # Create .env with provided credentials
 print_info "Saving credentials to .env..."
