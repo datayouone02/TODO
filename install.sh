@@ -14,6 +14,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 REPO_URL="https://github.com/datayouone02/TODO.git"
+REPO_BRANCH="main"
 PROJECT_DIR="$HOME/TODO"
 SERVICE_NAME="todo-bot"
 PYTHON_VERSION="3.8"
@@ -79,7 +80,7 @@ if [[ -d "$PROJECT_DIR/.git" ]]; then
     sudo -u "$ACTUAL_USER" git pull origin master
 else
     print_info "Cloning repository..."
-    sudo -u "$ACTUAL_USER" git clone "$REPO_URL" "$PROJECT_DIR"
+    sudo -u "$ACTUAL_USER" git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR"
 fi
 
 cd "$PROJECT_DIR"

@@ -24,8 +24,8 @@ A powerful Telegram bot for managing tasks with expiration dates, tags, and sear
 ## Quick Install on Ubuntu
 
 ```bash
-# Clone the repository
-git clone https://github.com/datayouone02/TODO.git
+# Clone the repository (main branch)
+git clone -b main https://github.com/datayouone02/TODO.git
 cd TODO
 
 # Make install script executable and run it
@@ -45,7 +45,7 @@ The install script will:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/datayouone02/TODO.git
+git clone -b main https://github.com/datayouone02/TODO.git
 cd TODO
 ```
 

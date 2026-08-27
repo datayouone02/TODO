@@ -6,6 +6,7 @@
 set -e
 
 REPO_URL="https://github.com/datayouone02/TODO.git"
+REPO_BRANCH="main"
 PROJECT_DIR="$HOME/TODO"
 
 echo "🚀 TODO Bot Simple Installer"
@@ -19,7 +20,7 @@ if [[ -d "$PROJECT_DIR/.git" ]]; then
     git pull origin master
 else
     echo "📦 Cloning repository..."
-    git clone "$REPO_URL" "$PROJECT_DIR"
+    git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR"
 fi
 
 cd "$PROJECT_DIR"
