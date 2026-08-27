@@ -10,13 +10,11 @@ apt-get update && apt-get install -y curl git python3 python3-venv python3-pip &
 
 ## After Installation
 
-1. Edit `.env` with your credentials:
-   ```bash
-   nano ~/TODO/.env
-   ```
-   Add your:
-   - `TOKEN` (from @BotFather)
-   - `ADMIN_CHAT_ID` (from @userinfobot)
+Credentials are **auto-configured** during install. Just verify:
+
+```bash
+cat ~/TODO/.env
+```
 
 2. Start the bot:
    ```bash

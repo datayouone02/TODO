@@ -52,11 +52,15 @@ print_info "Setting up Python environment..."
 [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" python3 -m venv venv || python3 -m venv venv
 [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" "$PROJECT_DIR/venv/bin/pip" install -q -r requirements.txt || "$PROJECT_DIR/venv/bin/pip" install -q -r requirements.txt
 
-# Create .env from template
-[[ ! -f "$PROJECT_DIR/.env" ]] && {
-    print_warning "Creating .env template - EDIT IT WITH YOUR CREDENTIALS!"
-    [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env" || cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
-}
+# Create .env with credentials
+print_info "Creating .env with your credentials..."
+cat > "$PROJECT_DIR/.env" <<EOF
+TOKEN=7534593312:AAEvjSrbcclTkqVm3aFt7aUNDzPahuSwxt0
+ADMIN_CHAT_ID=8432235716
+DATABASE=tasks.db
+EOF
+[[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR/.env"
+print_success "Credentials written to .env"
 
 # Permissions
 [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown -R "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR"
