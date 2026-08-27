@@ -1,166 +1,74 @@
 #!/bin/bash
 
-# TODO Telegram Bot - Ubuntu Installation Script
-# Run with: sudo ./install.sh  (or as root directly: ./install.sh)
-# One-liner: curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | sudo bash
-#           (or with sudo if not root: curl -fsSL ... | sudo bash)
-# Minimal/Docker (no curl/sudo): apt-get update && apt-get install -y curl && curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
+# TODO Telegram Bot - One-line install script
+# Usage: apt-get update && apt-get install -y curl && curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
+# Or as root: curl -fsSL https://raw.githubusercontent.com/datayouone02/TODO/main/install.sh | bash
 
-set -e  # Exit on error
+set -e
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Configuration
+print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
 REPO_URL="https://github.com/datayouone02/TODO.git"
 REPO_BRANCH="main"
 SERVICE_NAME="todo-bot"
-PYTHON_VERSION="3.8"
 
-# Helper functions
-print_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Detect if running as root
 IS_ROOT=false
-if [[ $EUID -eq 0 ]]; then
-    IS_ROOT=true
-fi
+[[ $EUID -eq 0 ]] && IS_ROOT=true
 
-# Get the actual user (non-root user who invoked sudo, or current user)
-get_actual_user() {
-    if [[ -n "$SUDO_USER" ]]; then
-        echo "$SUDO_USER"
-    elif [[ "$IS_ROOT" == "true" && -n "$USER" && "$USER" != "root" ]]; then
-        echo "$USER"
-    else
-        echo "root"
-    fi
-}
-
-ACTUAL_USER=$(get_actual_user)
+ACTUAL_USER="${SUDO_USER:-${USER:-root}}"
 ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
 PROJECT_DIR="$ACTUAL_HOME/TODO"
 
-print_info "Starting TODO Bot installation for user: $ACTUAL_USER"
-print_info "Project directory: $PROJECT_DIR"
-print_info "Running as root: $IS_ROOT"
+print_info "Installing TODO Bot for $ACTUAL_USER at $PROJECT_DIR"
 
-# Install required system packages (curl, sudo if missing)
-print_info "Installing required system packages..."
+# Install all dependencies with apt
+print_info "Installing system packages via apt..."
 apt-get update -qq
+apt-get install -y -qq curl git python3 python3-venv python3-pip
 
-# Install curl if missing (needed for one-liner)
-if ! command -v curl &> /dev/null; then
-    print_info "Installing curl..."
-    apt-get install -y -qq curl
-fi
-
-# Install sudo if missing (needed for running commands as actual user)
-if ! command -v sudo &> /dev/null; then
-    print_info "Installing sudo..."
-    apt-get install -y -qq sudo
-fi
-
-# Install Python and dependencies
-print_info "Installing Python $PYTHON_VERSION and required packages..."
-apt-get install -y -qq python3 python3-venv python3-pip git
-
-# Check Python version
-PYTHON_INSTALLED_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
-print_info "Python version installed: $PYTHON_INSTALLED_VERSION"
-
-# Clone or update repository
+# Clone/update repo
 if [[ -d "$PROJECT_DIR/.git" ]]; then
-    print_info "Repository exists, pulling latest changes..."
+    print_info "Updating repository..."
     cd "$PROJECT_DIR"
-    if [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]]; then
-        sudo -u "$ACTUAL_USER" git pull origin "$REPO_BRANCH"
-    else
-        git pull origin "$REPO_BRANCH"
-    fi
+    [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" git pull origin "$REPO_BRANCH" || git pull origin "$REPO_BRANCH"
 else
     print_info "Cloning repository..."
-    if [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]]; then
-        sudo -u "$ACTUAL_USER" git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR"
-    else
-        git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR"
-    fi
+    [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR" || git clone -b "$REPO_BRANCH" "$REPO_URL" "$PROJECT_DIR"
 fi
 
 cd "$PROJECT_DIR"
 
-# Create virtual environment
-print_info "Creating virtual environment..."
-if [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]]; then
-    sudo -u "$ACTUAL_USER" python3 -m venv venv
-else
-    python3 -m venv venv
-fi
+# Create venv and install deps
+print_info "Setting up Python environment..."
+[[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" python3 -m venv venv || python3 -m venv venv
+[[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" "$PROJECT_DIR/venv/bin/pip" install -q -r requirements.txt || "$PROJECT_DIR/venv/bin/pip" install -q -r requirements.txt
 
-# Install Python dependencies
-print_info "Installing Python dependencies..."
-if [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]]; then
-    sudo -u "$ACTUAL_USER" "$PROJECT_DIR/venv/bin/pip" install --upgrade pip -q
-    sudo -u "$ACTUAL_USER" "$PROJECT_DIR/venv/bin/pip" install -r requirements.txt -q
-else
-    "$PROJECT_DIR/venv/bin/pip" install --upgrade pip -q
-    "$PROJECT_DIR/venv/bin/pip" install -r requirements.txt -q
-fi
+# Create .env from template
+[[ ! -f "$PROJECT_DIR/.env" ]] && {
+    print_warning "Creating .env template - EDIT IT WITH YOUR CREDENTIALS!"
+    [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && sudo -u "$ACTUAL_USER" cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env" || cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
+}
 
-# Create .env file if it doesn't exist
-if [[ ! -f "$PROJECT_DIR/.env" ]]; then
-    print_warning "No .env file found. Creating from template..."
-    if [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]]; then
-        sudo -u "$ACTUAL_USER" cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
-    else
-        cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
-    fi
-    print_warning "Please edit $PROJECT_DIR/.env with your bot token and admin chat ID"
-    print_warning "Use: nano $PROJECT_DIR/.env"
-else
-    print_info ".env file already exists"
-fi
-
-# Set permissions
-print_info "Setting file permissions..."
-if [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]]; then
-    chown -R "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR"
-fi
+# Permissions
+[[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown -R "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR"
 chmod +x "$PROJECT_DIR/TO-DO.py"
 
-# Check if systemd is available
-USE_SYSTEMD=false
+# systemd or start script
 if command -v systemctl &> /dev/null && [[ -d /run/systemd/system ]]; then
-    USE_SYSTEMD=true
-fi
-
-if [[ "$USE_SYSTEMD" == "true" ]]; then
-    # Create systemd service
-    print_info "Creating systemd service..."
+    print_info "Setting up systemd service..."
     cat > "/etc/systemd/system/$SERVICE_NAME.service" <<EOF
 [Unit]
 Description=TODO Telegram Bot
 After=network.target
-StartLimitIntervalSec=0
-
 [Service]
 Type=simple
 Restart=always
@@ -171,42 +79,14 @@ Environment=PATH=$PROJECT_DIR/venv/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=$PROJECT_DIR/venv/bin/python $PROJECT_DIR/TO-DO.py
 StandardOutput=journal
 StandardError=journal
-
-# Security settings (only apply if not running as root in container)
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=$PROJECT_DIR
-
 [Install]
 WantedBy=multi-user.target
 EOF
-
-    # Reload systemd and enable service
-    print_info "Configuring systemd service..."
     systemctl daemon-reload
     systemctl enable "$SERVICE_NAME"
-
-    print_success "Installation complete!"
-    echo
-    print_info "Next steps:"
-    echo "  1. Edit the .env file with your credentials:"
-    echo "     nano $PROJECT_DIR/.env"
-    echo
-    echo "  2. Start the bot:"
-    echo "     systemctl start $SERVICE_NAME"
-    echo
-    echo "  3. Check status:"
-    echo "     systemctl status $SERVICE_NAME"
-    echo
-    echo "  4. View logs:"
-    echo "     journalctl -u $SERVICE_NAME -f"
-    echo
+    print_success "Installed! Run: systemctl start $SERVICE_NAME"
 else
-    # No systemd - create a simple start script
-    print_warning "systemd not available (container/minimal environment). Creating start script instead."
-
+    print_warning "No systemd detected - creating start script"
     cat > "$PROJECT_DIR/start_bot.sh" <<'EOF'
 #!/bin/bash
 cd "$(dirname "$0")"
@@ -214,26 +94,8 @@ source venv/bin/activate
 python TO-DO.py
 EOF
     chmod +x "$PROJECT_DIR/start_bot.sh"
-
-    if [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]]; then
-        chown "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR/start_bot.sh"
-    fi
-
-    print_success "Installation complete!"
-    echo
-    print_info "Next steps:"
-    echo "  1. Edit the .env file with your credentials:"
-    echo "     nano $PROJECT_DIR/.env"
-    echo
-    echo "  2. Run the bot directly:"
-    echo "     cd $PROJECT_DIR && ./start_bot.sh"
-    echo
-    echo "  3. Or run in background:"
-    echo "     cd $PROJECT_DIR && nohup ./start_bot.sh > bot.log 2>&1 &"
-    echo
-    echo "  4. To stop background process:"
-    echo "     pkill -f TO-DO.py"
-    echo
+    [[ "$IS_ROOT" == "true" && "$ACTUAL_USER" != "root" ]] && chown "$ACTUAL_USER:$ACTUAL_USER" "$PROJECT_DIR/start_bot.sh"
+    print_success "Installed! Run: cd $PROJECT_DIR && ./start_bot.sh"
 fi
 
-print_warning "Remember to add your TOKEN and ADMIN_CHAT_ID to .env before starting!"
+print_warning "Edit $PROJECT_DIR/.env with TOKEN and ADMIN_CHAT_ID before starting!"
